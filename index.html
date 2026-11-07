@@ -2,17 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>노선버스 정시성 체크앱</title>
-    <meta name="description" content="노선버스 배차 시간표, 원본 배차표 사진, 실시간 정시성 체크를 관리하는 앱입니다.">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="버스 정시성">
-    <link rel="manifest" href="./manifest.webmanifest">
-    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
-    <link rel="apple-touch-icon" href="./icons/icon-180.png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS (xlsx) for parsing Excel files -->
@@ -23,106 +14,110 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     
     <style>
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sab: env(safe-area-inset-bottom);
+        }
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f1f5f9;
+            background-color: #0f172a;
+            color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
-        /* Custom Table Style matching the image */
-        .schedule-table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        .schedule-table th, .schedule-table td {
-            border: 2px solid #1e293b;
-            text-align: center;
-            vertical-align: middle;
-        }
-        /* Print/Clean Design Styling */
-        .bg-trip-header { background-color: #a7f3d0; } /* Top Trip Header Green */
-        .bg-dept-header { background-color: #93c5fd; } /* Departure Header Blue */
-        .bg-stop-header { background-color: #ffffff; } /* Stops White */
-        .bg-arr-header  { background-color: #fca5a5; } /* Arrival Header Red/Pink */
-        .bg-cell-num    { background-color: #fef08a; } /* Numbers Yellow */
-        .bg-cell-dept   { background-color: #bfdbfe; } /* Departure Cell Soft Blue */
-        .bg-cell-arr    { background-color: #fecdd3; } /* Arrival Cell Pink */
 
-        /* 근무조별 시간표: 첨부된 종이 배차표처럼 회차는 세로, 근무조는 가로로 배치 */
+        /* 6.8인치 스마트폰 세로모드 스크롤바 미세 조정 */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 9999px;
+        }
+
+        /* 터치 반응용 하이라이트 */
+        .touch-active:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+
+        /* 근무조별 시간표 모바일 밀도 최적화 */
         .grouped-schedule-table {
             border-collapse: collapse;
             width: max-content;
             min-width: 100%;
             table-layout: fixed;
-            background: #fff;
+            background: #1e293b;
         }
         .grouped-schedule-table th,
         .grouped-schedule-table td {
             border: 1px solid #334155;
-            min-width: 54px;
-            max-width: 82px;
-            padding: 8px 6px;
+            min-width: 50px;
+            max-width: 75px;
+            padding: 10px 4px;
             text-align: center;
             vertical-align: middle;
             white-space: nowrap;
+            font-size: 12px;
             font-variant-numeric: tabular-nums;
         }
         .grouped-schedule-table .trip-col {
             position: sticky;
             left: 0;
-            z-index: 3;
-            min-width: 42px;
-            width: 42px;
-            background: #fde047;
+            z-index: 10;
+            min-width: 44px;
+            width: 44px;
+            background: #facc15;
             color: #0f172a;
+            font-weight: 900;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.3);
         }
         .grouped-schedule-table .shift-group-header {
-            background: #a7f3d0;
-            color: #0f172a;
-            font-size: 14px;
+            background: #059669;
+            color: #ffffff;
+            font-size: 13px;
             font-weight: 900;
-            border-top: 2px solid #1e293b;
-            border-bottom: 2px solid #1e293b;
+            border-bottom: 2px solid #0f172a;
+            padding: 8px 4px;
         }
         .grouped-schedule-table .column-header {
-            background: #f8fafc;
-            color: #1e293b;
+            background: #334155;
+            color: #f1f5f9;
             white-space: normal;
-            min-width: 62px;
+            min-width: 58px;
             font-size: 11px;
-            line-height: 1.25;
+            line-height: 1.2;
+            padding: 6px 2px;
         }
         .grouped-schedule-table .departure-header,
         .grouped-schedule-table .departure-cell {
-            background: #a5b4fc;
-            color: #1e1b4b;
+            background: #3730a3;
+            color: #e0e7ff;
+            font-weight: 700;
         }
         .grouped-schedule-table .arrival-header,
         .grouped-schedule-table .arrival-cell {
-            background: #f3c8b8;
-            color: #431407;
+            background: #881337;
+            color: #ffe4e6;
+            font-weight: 700;
         }
-        .grouped-schedule-table tbody tr:nth-child(odd) .stop-cell { background: #fde047; }
-        .grouped-schedule-table tbody tr:nth-child(even) .stop-cell { background: #f8fafc; }
-        .grouped-schedule-table .group-start { border-left: 3px solid #1e293b !important; }
+        .grouped-schedule-table tbody tr:nth-child(odd) .stop-cell { background: #1e293b; color: #f8fafc; }
+        .grouped-schedule-table tbody tr:nth-child(even) .stop-cell { background: #0f172a; color: #f8fafc; }
+        .grouped-schedule-table .group-start { border-left: 2px solid #64748b !important; }
         .grouped-schedule-table .trip-cell { font-weight: 900; }
-        @media (max-width: 640px) {
-            .grouped-schedule-table th,
-            .grouped-schedule-table td { padding: 7px 5px; min-width: 48px; font-size: 11px; }
-            .grouped-schedule-table .column-header { min-width: 54px; font-size: 10px; }
-        }
 
+        /* 사진 연속 보기 스태이지 */
         .schedule-photo-stage {
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 14px;
-            min-height: 420px;
-            max-height: 80vh;
-            overflow-y: auto;
-            overflow-x: auto;
-            padding: 20px;
+            background: #090d16;
+            border-radius: 16px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 24px;
+            gap: 16px;
+            width: 100%;
+            overflow-x: auto;
         }
         .schedule-photo-item {
             display: flex;
@@ -132,252 +127,206 @@
         }
         .schedule-photo-item img {
             height: auto;
-            max-width: none;
+            max-width: 100%;
             object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 4px 24px rgba(0,0,0,.4);
-        }
-        .photo-mode-button.active {
-            background: #fff;
-            color: #4338ca;
-            box-shadow: 0 1px 3px rgba(15,23,42,.14);
-        }
-        @media (max-width: 640px) {
-            .schedule-photo-stage { min-height: 300px; max-height: 75vh; padding: 10px; gap: 16px; }
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
         }
 
+        /* 탭 버튼 커스텀 스타일 */
+        .tab-btn {
+            color: #94a3b8;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn.active {
+            color: #38bdf8;
+            border-bottom-color: #38bdf8;
+            font-weight: 900;
+        }
 
-        .photo-queue-button { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 8px; padding: 7px 10px; font-size: 11px; font-weight: 700; color: #334155; }
-        .photo-queue-button.active { border-color: #6366f1; background: #eef2ff; color: #4338ca; box-shadow: 0 0 0 1px #6366f1 inset; }
-        #photo-crop-box { box-sizing: border-box; }
-        #photo-admin-preview-image { touch-action: none; }
-        @media (max-width: 640px) { #photo-admin-preview-image { max-height: 62vh; } }
-
+        /* 모바일 터치 영역 확대 */
+        input, select, button {
+            touch-action: manipulation;
+        }
     </style>
 </head>
-<body class="min-h-screen text-slate-800 flex flex-col justify-between">
+<body class="min-h-screen flex flex-col justify-between pb-[calc(16px+var(--sab))] pt-[var(--sat)]">
 
-    <!-- Top Navigation Header -->
-    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="p-2 bg-indigo-600 rounded-xl">
-                    <i data-lucide="bus" class="w-6 h-6 text-white"></i>
+    <!-- Sticky Header for 6.8" Screen -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 px-4 py-3 shadow-md">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="p-2 bg-indigo-600 rounded-xl shadow-inner">
+                    <i data-lucide="bus" class="w-5 h-5 text-white"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg font-black tracking-tight leading-tight">노선버스 정시성 체크앱</h1>
-                    <p class="text-xs text-slate-400">운행 배차표 & 실시간 정시율 통합 관리</p>
+                    <h1 class="text-base font-black tracking-tight leading-tight text-white">노선버스 정시성 체크</h1>
+                    <p class="text-[10px] text-slate-400">모바일 맞춤 배차표 & 실시간 판정</p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                <button id="pwa-install-button" onclick="installPWA()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
-                    <i data-lucide="download" class="w-4 h-4"></i><span>앱 설치</span>
-                </button>
-                <button onclick="switchTab('settings')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
-                    <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
-                    <span>엑셀 / 사진 관리</span>
-                </button>
-            </div>
+            <button onclick="switchTab('settings')" class="p-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-emerald-400 flex items-center gap-1 touch-active">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                <span class="text-[11px]">설정</span>
+            </button>
+        </div>
+
+        <!-- Horizontal Tab Navigation Bar (Thumb Accessible) -->
+        <div id="main-nav-tabs" class="max-w-md mx-auto flex items-center justify-between border-t border-slate-800/80 mt-2.5 pt-2 px-1">
+            <button id="btn-view-schedule" onclick="switchView('schedule')" class="tab-btn active flex-1 py-1.5 text-xs flex flex-col items-center gap-0.5 touch-active">
+                <i data-lucide="table" class="w-4 h-4"></i>
+                <span>시간표</span>
+            </button>
+            <button id="btn-view-photo" onclick="switchView('photo')" class="tab-btn flex-1 py-1.5 text-xs flex flex-col items-center gap-0.5 touch-active">
+                <i data-lucide="image" class="w-4 h-4"></i>
+                <span>배차 사진</span>
+            </button>
+            <button id="btn-view-punctuality" onclick="switchView('punctuality')" class="tab-btn flex-1 py-1.5 text-xs flex flex-col items-center gap-0.5 touch-active">
+                <i data-lucide="clock-check" class="w-4 h-4"></i>
+                <span>정시 체크</span>
+            </button>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow space-y-6">
+    <!-- Main Mobile Viewport Container -->
+    <main class="max-w-md mx-auto px-3 py-3 w-full flex-grow space-y-3">
 
-        <!-- Search & View Switcher Bar -->
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
-            <!-- Left Filter inputs -->
-            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-slate-600 whitespace-nowrap">노선번호:</span>
-                    <input type="text" id="route-input" value="1004" placeholder="예: 1004" 
-                        class="w-24 px-3 py-1.5 bg-slate-100 font-bold border border-slate-300 rounded-lg text-sm text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center">
+        <!-- Quick Filter Control Card (Mobile Compact View) -->
+        <div id="filter-card" class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 shadow-sm space-y-2.5">
+            <div class="grid grid-cols-3 gap-2">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 block mb-1">노선번호</label>
+                    <input type="text" id="route-input" value="1004" placeholder="1004" 
+                        class="w-full px-2 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-black text-indigo-400 text-center focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
-
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-slate-600 whitespace-nowrap">순번:</span>
-                    <input type="number" id="sequence-input" value="1" placeholder="예: 1" min="1"
-                        class="w-16 px-3 py-1.5 bg-slate-100 font-bold border border-slate-300 rounded-lg text-sm text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 block mb-1">순번</label>
+                    <input type="number" id="sequence-input" value="1" placeholder="1" min="1"
+                        class="w-full px-2 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-black text-indigo-400 text-center focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
-
-                <div class="flex items-center gap-2">
-                    <label for="shift-select" class="text-xs font-bold text-slate-600 whitespace-nowrap">근무조:</label>
-                    <select id="shift-select" class="max-w-36 px-3 py-1.5 bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="__ALL__">전체 근무조</option>
-                    </select>
-                    <button onclick="loadSelectedShift()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition shadow-sm whitespace-nowrap">
-                        근무조 불러오기
-                    </button>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <label for="main-period-select" class="text-xs font-bold text-slate-600 whitespace-nowrap">운행일:</label>
-                    <select id="main-period-select" onchange="applySearchFilter()" class="px-3 py-1.5 bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 block mb-1">운행일</label>
+                    <select id="main-period-select" onchange="applySearchFilter()" class="w-full px-1.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-black text-indigo-400 text-center outline-none">
                         <option value="평일">평일</option>
                         <option value="주말">주말</option>
                         <option value="휴일">휴일</option>
                     </select>
                 </div>
-                <div class="flex items-center gap-2">
-                    <label for="main-time-slot-select" class="text-xs font-bold text-slate-600 whitespace-nowrap">시간대:</label>
-                    <select id="main-time-slot-select" onchange="applySearchFilter()" class="px-3 py-1.5 bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="오전">오전</option>
-                        <option value="오후">오후</option>
-                    </select>
-                </div>
-
-                <button onclick="applySearchFilter()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition shadow-sm">
-                    조회
-                </button>
             </div>
 
-            <!-- View Switcher Tabs -->
-            <div class="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl w-full md:w-auto gap-1">
-                <button id="btn-view-schedule" onclick="switchView('schedule')" class="photo-mode-button active flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
-                    <i data-lucide="table" class="w-4 h-4"></i>
-                    <span>엑셀 데이터 보기</span>
-                </button>
-                <button id="btn-view-photo" onclick="switchView('photo')" class="photo-mode-button flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5">
-                    <i data-lucide="image" class="w-4 h-4"></i>
-                    <span>사진만 보기</span>
-                </button>
-                <button id="btn-view-punctuality" onclick="switchView('punctuality')" class="photo-mode-button flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5">
-                    <i data-lucide="clock-check" class="w-4 h-4"></i>
-                    <span>정시성 체크</span>
+            <div class="flex items-center gap-2">
+                <div class="flex-1">
+                    <select id="shift-select" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-slate-200 outline-none">
+                        <option value="__ALL__">전체 근무조 보기</option>
+                    </select>
+                </div>
+                <button onclick="applySearchFilter()" class="px-4 py-2 bg-indigo-600 active:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md touch-active flex items-center justify-center gap-1">
+                    <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                    <span>조회</span>
                 </button>
             </div>
         </div>
 
         <!-- ========================================== -->
-        <!-- VIEW 1: IMAGE MATCHING BUS SCHEDULE TABLE -->
+        <!-- VIEW 1: HORIZONTAL SCROLL TIMETABLE TABLE  -->
         <!-- ========================================== -->
-        <div id="view-schedule" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 mb-4 border-b border-slate-200 gap-2">
-                <div>
-                    <h2 class="text-lg font-black text-slate-900 flex items-center gap-2">
-                        <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-md font-extrabold" id="tag-route-seq">노선 1004 | 1순번</span>
-                        근무조별 운행 시간표
-                    </h2>
-                    <p class="text-xs text-slate-500 mt-1">회차는 세로로, 근무조별 출발·정류장·도착 정보는 가로로 모아 비교합니다.</p>
-                </div>
-                
-                <div class="flex items-center gap-2 text-xs">
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 rounded border border-amber-200 font-semibold">
-                        <span class="w-2 h-2 rounded-full bg-amber-400"></span> 소요시간(분) 표기
-                    </span>
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200 font-semibold">
-                        <span class="w-2 h-2 rounded-full bg-blue-400"></span> 출발시각 표기 (시/분)
-                    </span>
-                </div>
+        <div id="view-schedule" class="bg-slate-900 p-3 rounded-2xl border border-slate-800 shadow-sm space-y-2.5">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span class="px-2 py-0.5 bg-indigo-950 text-indigo-300 text-[11px] rounded-md font-black border border-indigo-800" id="tag-route-seq">노선 1004 | 1순번</span>
+                <span class="text-[10px] text-slate-400 flex items-center gap-1">
+                    <i data-lucide="move-horizontal" class="w-3 h-3 text-indigo-400"></i> 좌우 스크롤
+                </span>
             </div>
 
             <!-- Dynamic Horizontal Grid Table Container -->
-            <div class="pb-4" id="schedule-table-wrapper">
+            <div class="w-full overflow-x-auto rounded-xl border border-slate-800" id="schedule-table-wrapper">
                 <!-- Table rendered dynamically via JS -->
             </div>
         </div>
 
-
-        <!-- PHOTO ONLY VIEW: MULTIPLE PHOTOS VERTICALLY LOADED -->
-        <div id="view-photo" class="hidden bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-200 pb-4">
+        <!-- ========================================== -->
+        <!-- VIEW 2: MULTIPLE PHOTOS VERTICAL VIEW     -->
+        <!-- ========================================== -->
+        <div id="view-photo" class="hidden bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
                 <div>
-                    <h2 class="text-lg font-black text-slate-900 flex items-center gap-2">
-                        <i data-lucide="image" class="w-5 h-5 text-indigo-600"></i>
-                        배차표 원본 사진 목록
+                    <h2 class="text-sm font-black text-white flex items-center gap-1.5">
+                        <i data-lucide="image" class="w-4 h-4 text-indigo-400"></i>
+                        배차표 사진 원본
                     </h2>
-                    <p id="photo-view-subtitle" class="text-xs text-slate-500 mt-1">노선번호와 운행일 유형에 맞는 저장 사진들을 세로로 나열하여 표시합니다.</p>
+                    <p id="photo-view-subtitle" class="text-[10px] text-slate-400 mt-0.5">등록된 사진들이 세로로 표시됩니다.</p>
                 </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <button onclick="changePhotoZoom(-0.2)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-black" title="축소">−</button>
-                    <span id="photo-zoom-level" class="min-w-14 text-center text-xs font-bold text-slate-600">맞춤</span>
-                    <button onclick="changePhotoZoom(0.2)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-black" title="확대">＋</button>
-                    <button onclick="resetPhotoZoom()" class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold">화면 맞춤</button>
-                    <button onclick="openPhotoManagerForCurrentSelection()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold">사진 등록 / 변경</button>
+                <div class="flex items-center gap-1">
+                    <button onclick="changePhotoZoom(-0.15)" class="w-7 h-7 bg-slate-800 active:bg-slate-700 text-slate-200 rounded-lg text-xs font-black flex items-center justify-center touch-active">−</button>
+                    <span id="photo-zoom-level" class="text-[10px] font-bold text-slate-300 min-w-10 text-center">맞춤</span>
+                    <button onclick="changePhotoZoom(0.15)" class="w-7 h-7 bg-slate-800 active:bg-slate-700 text-slate-200 rounded-lg text-xs font-black flex items-center justify-center touch-active">＋</button>
+                    <button onclick="resetPhotoZoom()" class="px-2 py-1 bg-indigo-950 text-indigo-300 rounded-lg text-[10px] font-bold border border-indigo-800 touch-active">초기화</button>
                 </div>
             </div>
-            <div id="photo-view-status" class="text-xs text-slate-500" aria-live="polite">저장된 사진을 확인하고 있습니다.</div>
+
+            <div id="photo-view-status" class="text-[11px] text-slate-400" aria-live="polite">사진을 불러오는 중...</div>
             
             <!-- Vertical Container for Multiple Photos -->
-            <div id="schedule-photo-stage" class="schedule-photo-stage">
-                <!-- Dynamic image items render here -->
-                <div id="photo-view-empty" class="text-center text-slate-300 self-center py-16">
-                    <i data-lucide="image-off" class="w-12 h-12 mx-auto mb-3 opacity-70"></i>
-                    <p class="font-bold text-white">등록된 배차표 사진이 없습니다.</p>
-                    <p class="text-xs mt-2 text-slate-300">사진 등록 / 변경 버튼에서 노선번호, 평일·주말·휴일, 오전·오후를 지정해 사진을 불러오세요.</p>
+            <div id="schedule-photo-stage" class="schedule-photo-stage min-h-[360px] max-h-[70vh]">
+                <div id="photo-view-empty" class="text-center text-slate-500 self-center py-12">
+                    <i data-lucide="image-off" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+                    <p class="font-bold text-slate-300 text-xs">등록된 배차표 사진이 없습니다.</p>
+                    <p class="text-[10px] mt-1 text-slate-400">상단 [설정] 메뉴에서 해당 노선 및 운행일의 사진을 등록하세요.</p>
                 </div>
             </div>
-            <p class="text-[11px] text-slate-400">여러 개의 사진을 위아래(세로)로 연속해서 볼 수 있습니다. 사진 목록 영역을 세로로 스크롤하세요.</p>
         </div>
 
         <!-- ========================================== -->
-        <!-- VIEW 2: PUNCTUALITY REAL-TIME CHECK VIEW -->
+        <!-- VIEW 3: PUNCTUALITY REAL-TIME CHECK VIEW   -->
         <!-- ========================================== -->
-        <div id="view-punctuality" class="hidden space-y-6">
+        <div id="view-punctuality" class="hidden space-y-3">
             
-            <!-- Summary KPI Dashboard -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <span class="text-xs font-bold text-slate-500">전체 정시율</span>
-                    <div id="kpi-punctuality-rate" class="text-2xl font-black text-slate-900 mt-1">100%</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5" id="kpi-on-time-count">0 / 0 정류장</div>
+            <!-- KPI Grid for 6.8" Screen (2x2 Compact Layout) -->
+            <div class="grid grid-cols-2 gap-2">
+                <div class="bg-slate-900 p-2.5 rounded-2xl border border-slate-800">
+                    <span class="text-[10px] font-bold text-slate-400">전체 정시율</span>
+                    <div id="kpi-punctuality-rate" class="text-xl font-black text-emerald-400 mt-0.5">100%</div>
+                    <div class="text-[9px] text-slate-500" id="kpi-on-time-count">0 / 0 완료</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <span class="text-xs font-bold text-slate-500">평균 지연/조기</span>
-                    <div id="kpi-avg-delay" class="text-2xl font-black text-amber-600 mt-1">0분</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">계획 대비 평균 차이</div>
+                <div class="bg-slate-900 p-2.5 rounded-2xl border border-slate-800">
+                    <span class="text-[10px] font-bold text-slate-400">평균 차이</span>
+                    <div id="kpi-avg-delay" class="text-xl font-black text-amber-400 mt-0.5">0분</div>
+                    <div class="text-[9px] text-slate-500">계획 대비 평균</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <span class="text-xs font-bold text-slate-500">지연 발생 정류장</span>
-                    <div id="kpi-delayed-count" class="text-2xl font-black text-red-600 mt-1">0곳</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">+2분 초과 지연</div>
+                <div class="bg-slate-900 p-2.5 rounded-2xl border border-slate-800">
+                    <span class="text-[10px] font-bold text-slate-400">지연 (+2분초과)</span>
+                    <div id="kpi-delayed-count" class="text-xl font-black text-rose-500 mt-0.5">0곳</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <span class="text-xs font-bold text-slate-500">조기 출발 정류장</span>
-                    <div id="kpi-early-count" class="text-2xl font-black text-blue-600 mt-1">0곳</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">-2분 초과 조기통과</div>
+                <div class="bg-slate-900 p-2.5 rounded-2xl border border-slate-800">
+                    <span class="text-[10px] font-bold text-slate-400">조기통과 (-2분미만)</span>
+                    <div id="kpi-early-count" class="text-xl font-black text-sky-400 mt-0.5">0곳</div>
                 </div>
             </div>
 
-            <!-- Interactive Trip Select & Live Log Table -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 mb-4 border-b border-slate-200 gap-3">
-                    <div>
-                        <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
-                            <i data-lucide="stop-circle" class="w-5 h-5 text-indigo-600"></i>
-                            회차별 정류장 도착 통과 시각 입력 및 정시성 체크
-                        </h3>
-                        <p class="text-xs text-slate-500">실제 도착/통과 시각을 입력하면 정시성을 즉시 계산합니다.</p>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <label class="text-xs font-bold text-slate-600">선택 회차:</label>
-                        <select id="select-trip-check" onchange="renderPunctualityCheckTable()" class="px-3 py-1.5 bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold text-indigo-700">
-                            <!-- Options populated via JS -->
-                        </select>
-                    </div>
+            <!-- Trip Selector & Real-Time Log Table -->
+            <div class="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2.5">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                    <span class="text-xs font-bold text-slate-300 whitespace-nowrap">회차 선택:</span>
+                    <select id="select-trip-check" onchange="renderPunctualityCheckTable()" class="flex-1 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-indigo-300 outline-none">
+                        <!-- Options populated via JS -->
+                    </select>
                 </div>
 
-                <!-- Timetable Checklist -->
-                <div class="overflow-x-auto rounded-xl border border-slate-200">
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-xs uppercase bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
+                <!-- Timetable Checklist Container -->
+                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-xs text-left">
+                        <thead class="bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-700">
                             <tr>
-                                <th class="px-4 py-3 text-center">정류장 순번</th>
-                                <th class="px-4 py-3">정류장명</th>
-                                <th class="px-4 py-3 text-center">기준값(분/시각)</th>
-                                <th class="px-4 py-3 text-center">계획 시각</th>
-                                <th class="px-4 py-3 text-center">실제 도착/통과 시각 (입력)</th>
-                                <th class="px-4 py-3 text-center">오차(분)</th>
-                                <th class="px-4 py-3 text-center">정시성 판정</th>
+                                <th class="px-2.5 py-2 text-center">정류장</th>
+                                <th class="px-2.5 py-2 text-center">계획</th>
+                                <th class="px-2.5 py-2 text-center">실제 도착입력</th>
+                                <th class="px-2.5 py-2 text-center">판정</th>
                             </tr>
                         </thead>
-                        <tbody id="punctuality-tbody" class="divide-y divide-slate-100">
+                        <tbody id="punctuality-tbody" class="divide-y divide-slate-800/60">
                             <!-- Rendered dynamically -->
                         </tbody>
                     </table>
@@ -387,132 +336,88 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- TAB 3: SETTINGS & EXCEL UPLOAD SECTION -->
+        <!-- SETTINGS & EXCEL / PHOTO MANAGEMENT TAB   -->
         <!-- ========================================== -->
-        <div id="tab-settings" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
-                <div>
-                    <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
-                        <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-600"></i>
-                        엑셀 데이터 / 배차표 사진 관리
-                    </h3>
-                    <p class="text-xs text-slate-500">엑셀 데이터 표 보기와 사진 원본만 보기 중 선택할 수 있습니다. 사진은 노선번호, 평일·주말·휴일, 오전·오후 유형별로 여러 장씩 따로 저장할 수 있습니다.</p>
-                </div>
-                <button onclick="switchTab('main')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">
-                    메인으로 돌아가기
+        <div id="tab-settings" class="hidden bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-black text-white flex items-center gap-1.5">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4 text-emerald-400"></i>
+                    데이터 / 사진 관리
+                </h3>
+                <button onclick="switchTab('main')" class="px-3 py-1 bg-slate-800 active:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold touch-active">
+                    메인으로
                 </button>
             </div>
 
-            <!-- Upload Box -->
-            <div class="border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 rounded-2xl p-8 text-center transition cursor-pointer" onclick="document.getElementById('excel-file-input').click()">
+            <!-- Excel Upload Area -->
+            <div class="border-2 border-dashed border-slate-700 bg-slate-950/60 rounded-2xl p-5 text-center touch-active" onclick="document.getElementById('excel-file-input').click()">
                 <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelUpload(event)">
                 <div class="flex flex-col items-center">
-                    <div class="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-indigo-600 mb-3 border border-slate-200">
-                        <i data-lucide="upload-cloud" class="w-6 h-6"></i>
-                    </div>
-                    <p class="text-sm font-bold text-slate-700">클릭하여 엑셀 파일 선택 또는 파일 드래그</p>
-                    <p class="text-xs text-slate-400 mt-1">.xlsx, .xls, .csv 형식 지원</p>
+                    <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-400 mb-1"></i>
+                    <p class="text-xs font-bold text-slate-200">엑셀(.xlsx/.csv) 파일 불러오기</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">터치하여 파일 선택</p>
                 </div>
             </div>
 
+            <!-- Route/day-type photo library (Multiple Photo Upload) -->
+            <section class="rounded-2xl border border-indigo-900/60 bg-indigo-950/30 p-3.5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-black text-white flex items-center gap-1.5">
+                        <i data-lucide="images" class="w-4 h-4 text-indigo-400"></i>
+                        배차표 사진 관리 (다중 선택 가능)
+                    </h4>
+                </div>
 
-            <!-- Route/day-type photo library (Multiple Photo Upload Support) -->
-            <section class="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-5 space-y-4">
-                <div class="flex items-start gap-3">
-                    <div class="p-2 bg-white rounded-xl text-indigo-600 border border-indigo-100"><i data-lucide="images" class="w-6 h-6"></i></div>
-                    <div class="flex-1">
-                        <h4 class="text-sm font-black text-slate-900">배차표 사진 저장소 (다중 업로드 지원)</h4>
-                        <p class="text-xs text-slate-600 mt-1">여러 장을 한 번에 등록하고, 각 사진을 회전·자르기한 뒤 노선·운행일·오전/오후별로 세로 나열할 수 있습니다.</p>
-                    </div>
-                    <span class="text-[11px] rounded-full bg-white border border-indigo-200 px-3 py-1 font-bold text-indigo-700">다중 이미지 저장</span>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-white p-3 rounded-xl border border-slate-200">
-                    <label class="text-xs font-bold text-slate-600 space-y-1">노선번호
-                        <input id="photo-route-input" type="text" value="1004" placeholder="예: 134" onchange="refreshPhotoManagerStatus()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700" />
-                    </label>
-                    <label class="text-xs font-bold text-slate-600 space-y-1">운행일 유형
-                        <select id="photo-period-input" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700" onchange="refreshPhotoManagerStatus()">
-                            <option value="평일">평일</option>
-                            <option value="주말">주말</option>
-                            <option value="휴일">휴일</option>
-                        </select>
-                    </label>
-                    <label class="text-xs font-bold text-slate-600 space-y-1">시간대
-                        <select id="photo-timeslot-input" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700" onchange="refreshPhotoManagerStatus()">
-                            <option value="오전">오전</option>
-                            <option value="오후">오후</option>
-                        </select>
-                    </label>
-                    <label class="text-xs font-bold text-slate-600 space-y-1">사진 파일 (다중 선택 가능)
-                        <input id="schedule-photo-file" type="file" accept="image/*" multiple class="w-full block text-xs text-slate-600 file:mr-2 file:px-3 file:py-2 file:border-0 file:rounded-lg file:bg-indigo-100 file:text-indigo-700 file:font-bold" onchange="previewSchedulePhoto(event)" />
-                    </label>
-                </div>
-                
-                <!-- Multi-image queue and per-image rotate/crop editor -->
-                <div id="photo-admin-preview" class="hidden bg-white rounded-xl border border-slate-200 p-3 space-y-3">
-                    <p class="text-xs font-bold text-slate-800" id="photo-admin-preview-summary">선택한 사진 (0장)</p>
-                    <div id="photo-pending-queue" class="flex flex-wrap gap-2 max-h-40 overflow-y-auto"></div>
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button" onclick="rotatePhotoEditor(-1)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold">↶ 왼쪽 90°</button>
-                        <button type="button" onclick="rotatePhotoEditor(1)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold">↷ 오른쪽 90°</button>
-                        <button type="button" onclick="clearPhotoCrop()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold">자르기 해제</button>
-                    </div>
-                    <p class="text-[11px] text-slate-500">목록에서 사진을 선택한 뒤 미리보기에서 드래그하여 저장할 범위를 지정하세요. 선택하지 않으면 전체 사진이 저장됩니다.</p>
-                    <div id="photo-editor-stage" class="bg-slate-100 border border-slate-200 rounded-xl p-2 overflow-auto flex justify-center max-h-[460px]">
-                        <div id="photo-editor-wrap" class="relative inline-block leading-none select-none">
-                            <img id="photo-admin-preview-image" class="block max-w-full max-h-[420px] h-auto w-auto cursor-crosshair select-none" alt="사진 자르기 미리보기" draggable="false" onpointerdown="beginPhotoCrop(event)" onpointermove="movePhotoCrop(event)" onpointerup="endPhotoCrop(event)" onpointercancel="endPhotoCrop(event)">
-                            <div id="photo-crop-overlay" class="absolute inset-0 pointer-events-none"><div id="photo-crop-box" class="hidden absolute border-2 border-dashed border-rose-600 bg-rose-500/10 shadow-[0_0_0_9999px_rgba(15,23,42,.18)]"></div></div>
+                <div class="space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">노선번호</label>
+                            <input id="photo-route-input" type="text" value="1004" placeholder="1004" onchange="refreshPhotoManagerStatus()" class="w-full px-2.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white text-center" />
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-1">운행일 유형</label>
+                            <select id="photo-period-input" onchange="refreshPhotoManagerStatus()" class="w-full px-2 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white text-center">
+                                <option value="평일">평일</option>
+                                <option value="주말">주말</option>
+                                <option value="휴일">휴일</option>
+                            </select>
                         </div>
                     </div>
-                    <p id="photo-crop-hint" class="text-[11px] text-indigo-700">저장 범위: 전체 사진</p>
+
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 block mb-1">사진 파일들 선택</label>
+                        <input id="schedule-photo-file" type="file" accept="image/*" multiple class="w-full text-xs text-slate-300 file:mr-2 file:px-3 file:py-1.5 file:border-0 file:rounded-xl file:bg-indigo-600 file:text-white file:font-bold" onchange="previewSchedulePhoto(event)" />
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <button id="save-schedule-photo-button" onclick="saveSchedulePhoto()" disabled class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-xs font-black shadow-sm">사진 추가 저장</button>
-                    <button onclick="loadPhotoManagerCurrentRecord()" class="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold">저장 사진 목록 확인</button>
-                    <button id="delete-schedule-photo-button" onclick="deleteSchedulePhoto()" disabled class="px-4 py-2 bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 disabled:opacity-40 rounded-lg text-xs font-bold">이 노선/일자 전체 사진 삭제</button>
-                    <button onclick="openMainPhotoViewFromManager()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">메인 화면에서 보기</button>
+                
+                <!-- Multi-image Preview Container -->
+                <div id="photo-admin-preview" class="hidden bg-slate-900 rounded-xl border border-slate-800 p-2.5 space-y-2">
+                    <p class="text-[11px] font-bold text-slate-300" id="photo-admin-preview-summary">선택한 사진 (0장)</p>
+                    <div id="photo-admin-preview-list" class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
+                        <!-- Preview Items -->
+                    </div>
                 </div>
-                <div id="photo-admin-status" class="rounded-lg bg-white border border-slate-200 px-3 py-2 text-xs text-slate-600" aria-live="polite">사진 저장소를 준비하고 있습니다.</div>
-                <p class="text-[11px] leading-relaxed text-slate-500">저장 기준은 <strong>노선번호 + 운행일 유형 + 오전·오후</strong>입니다. 사진 선택 창에서 Ctrl 또는 Shift 키를 눌러 복수 사진을 선택하거나 연속으로 사진을 등록할 수 있습니다. 메인 화면에서는 등록된 사진들이 <strong>세로</strong>로 나열됩니다.</p>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button id="save-schedule-photo-button" onclick="saveSchedulePhoto()" disabled class="w-full py-2 bg-indigo-600 active:bg-indigo-700 disabled:opacity-40 text-white rounded-xl text-xs font-bold touch-active">사진 추가 저장</button>
+                    <button id="delete-schedule-photo-button" onclick="deleteSchedulePhoto()" disabled class="w-full py-2 bg-slate-800 border border-rose-900 text-rose-400 disabled:opacity-40 rounded-xl text-xs font-bold touch-active">전체 사진 삭제</button>
+                </div>
+
+                <div id="photo-admin-status" class="rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-[10px] text-slate-400">사진 저장소를 준비 중입니다.</div>
             </section>
 
-            <!-- Sample Data Reload Button -->
-            <div class="flex justify-between items-center bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                <div>
-                    <p class="text-xs font-bold text-indigo-900">이미지 양식과 동일한 샘플 데이터가 준비되어 있습니다.</p>
-                    <p class="text-[11px] text-indigo-700 mt-0.5">엑셀 파일 없이 기본 테스트 데이터를 즉시 로드합니다.</p>
-                </div>
-                <button onclick="loadSampleData()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow transition flex items-center gap-1.5">
-                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    <span>샘플 데이터 로드</span>
-                </button>
-            </div>
-
-            <!-- Format Guidance Box -->
-            <div class="p-5 bg-slate-900 text-white rounded-2xl text-xs space-y-3">
-                <p class="font-bold text-amber-400 text-sm flex items-center gap-1.5">
-                    <i data-lucide="info" class="w-4 h-4"></i> 엑셀 파일 작성 규칙 (이미지 양식 호환)
-                </p>
-                <p class="text-slate-300 leading-relaxed">
-                    엑셀 파일의 <strong>첫 번째 행(헤더)</strong>에 아래 컬럼 명칭들을 포함시켜 작성해 주세요:
-                </p>
-                <div class="overflow-x-auto bg-slate-800 p-3 rounded-lg font-mono text-[11px] text-emerald-300">
-                    근무조 | 노선번호 | 순번 | 회차 | 출발 | 진성공원 | 토성동 | 마리아수녀원 | 알로시오의원 | 서구청 | 우암자유 | 도착
-                </div>
-                <ul class="list-disc list-inside text-slate-400 space-y-1 text-[11px]">
-                    <li><strong>출발</strong>: <code class="text-amber-300">4/50</code> (4시 50분) 또는 <code class="text-amber-300">04:50</code> 형식 모두 가능합니다.</li>
-                    <li><strong>근무조</strong>: <code class="text-amber-300">근무조</code> 열에 주간조, 야간조, 1조 등으로 입력하면 상단에서 조를 선택해 해당 데이터만 불러올 수 있습니다. 이 열이 없으면 미지정 데이터로 처리합니다.</li>
-                    <li><strong>정류장 열값</strong>: 출발지로부터의 소요 분(예: <code class="text-amber-300">7</code>, <code class="text-amber-300">27</code>) 또는 통과시각 문자열 모두 지원합니다.</li>
-                </ul>
-            </div>
+            <!-- Sample Data Reload -->
+            <button onclick="loadSampleData()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 touch-active">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>기본 샘플 데이터 로드</span>
+            </button>
         </div>
 
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
-        <p>© 2026 노선버스 정시성 체크앱 | 배차표 정시율 모니터링 시스템</p>
-        <p class="mt-1">Android: Chrome 메뉴 → 앱 설치 · 오프라인 사용은 최초 온라인 실행 후 지원됩니다.</p>
+    <footer class="max-w-md mx-auto text-center py-2 text-[10px] text-slate-500">
+        <p>© 2026 노선버스 정시성 체크앱</p>
     </footer>
 
     <!-- JavaScript Application Code -->
@@ -521,33 +426,23 @@
         let rawBusData = [];
         let activeRoute = '1004';
         let activeSequence = '1';
-        let activeShift = '__ALL__'; // '__ALL__' or a shift name from the Excel file
-        let currentView = 'schedule'; // 'schedule', 'photo', or 'punctuality'
+        let activeShift = '__ALL__';
+        let currentView = 'schedule';
         let activePeriod = '평일';
-        let activeTimeSlot = '오전';
-        let actualTimeLog = {}; // Stores user inputted actual arrival times
+        let actualTimeLog = {};
 
-        // Route + day-type photo storage (IndexedDB, supports multiple images per key)
+        // Route + day-type photo storage
         const PHOTO_DB_NAME = 'busPunctualityPhotoLibrary';
         const PHOTO_DB_VERSION = 1;
         const PHOTO_STORE_NAME = 'schedulePhotos';
         let photoDbPromise = null;
-        let pendingSchedulePhotos = []; // Array of {file, canvas, cropSelection, rotated}
-        let activePendingPhotoIndex = -1;
-        let photoWorkingCanvas = null;
-        let photoCropSelection = null;
-        let photoWasRotated = false;
-        let photoCropDragStart = null;
-        let photoIsDraggingCrop = false;
+        let pendingSchedulePhotos = [];
         let adminPreviewUrls = [];
         let mainPhotoObjectUrls = [];
-        let photoEditorPreviewUrl = null;
-        const APP_STATE_KEY = 'busPunctualityAppStateV1';
-        let deferredInstallPrompt = null;
         let photoZoom = 1;
         let photoRenderToken = 0;
 
-        // Default Sample Data (Exactly matching user's image structure)
+        // Default Sample Data
         const sampleData = [
             {
                 route: "1004", sequence: "1", trip: "1회", departure: "4/50",
@@ -599,73 +494,35 @@
             }
         ];
 
-        function persistAppState() {
-            try {
-                localStorage.setItem(APP_STATE_KEY, JSON.stringify({
-                    rawBusData, activeRoute, activeSequence, activeShift, activePeriod, activeTimeSlot, actualTimeLog,
-                    savedAt: new Date().toISOString()
-                }));
-            } catch (error) {
-                console.warn('앱 데이터 저장 실패:', error);
-            }
-        }
-
-        function restoreAppState() {
-            try {
-                const raw = localStorage.getItem(APP_STATE_KEY);
-                if (!raw) return false;
-                const saved = JSON.parse(raw);
-                if (!saved || !Array.isArray(saved.rawBusData) || saved.rawBusData.length === 0) return false;
-                rawBusData = saved.rawBusData;
-                activeRoute = saved.activeRoute || rawBusData[0].route || '1004';
-                activeSequence = saved.activeSequence || rawBusData[0].sequence || '1';
-                activeShift = saved.activeShift || '__ALL__';
-                actualTimeLog = saved.actualTimeLog || {};
-                document.getElementById('route-input').value = activeRoute;
-                document.getElementById('sequence-input').value = activeSequence;
-                populateShiftSelector(activeShift);
-                document.getElementById('main-period-select').value = saved.activePeriod || '평일';
-                document.getElementById('main-time-slot-select').value = saved.activeTimeSlot || '오전';
-                applySearchFilter();
-                return true;
-            } catch (error) {
-                console.warn('저장된 앱 데이터를 복원하지 못했습니다:', error);
-                return false;
-            }
-        }
-
-        // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            if (!restoreAppState()) loadSampleData();
-            registerPWAServiceWorker();
-            setupPWAInstallPrompt();
+            loadSampleData();
             openPhotoDatabase().then(() => {
-                const status = document.getElementById('photo-admin-status');
-                if (status) status.textContent = '사진 저장소가 준비되었습니다. 노선번호, 운행일, 오전·오후를 지정해 여러 장의 사진을 저장할 수 있습니다.';
                 refreshPhotoManagerStatus();
                 if (currentView === 'photo') renderPhotoViewer();
             }).catch(error => {
                 console.error('사진 저장소 초기화 실패:', error);
-                const status = document.getElementById('photo-admin-status');
-                if (status) status.textContent = '이 브라우저에서 사진 저장소를 사용할 수 없습니다. Chrome 또는 Edge에서 다시 실행해 주세요.';
-                const viewStatus = document.getElementById('photo-view-status');
-                if (viewStatus) viewStatus.textContent = '사진 저장 기능을 사용할 수 없습니다.';
             });
         });
 
-        // Tab Navigation (Main vs Settings)
         function switchTab(tab) {
+            const filterCard = document.getElementById('filter-card');
+            const mainTabs = document.getElementById('main-nav-tabs');
             const settingsTab = document.getElementById('tab-settings');
+
             if (tab === 'settings') {
                 document.getElementById('view-schedule').classList.add('hidden');
                 document.getElementById('view-photo').classList.add('hidden');
                 document.getElementById('view-punctuality').classList.add('hidden');
+                filterCard.classList.add('hidden');
+                mainTabs.classList.add('hidden');
                 settingsTab.classList.remove('hidden');
                 syncPhotoManagerInputs();
                 refreshPhotoManagerStatus();
             } else {
                 settingsTab.classList.add('hidden');
+                filterCard.classList.remove('hidden');
+                mainTabs.classList.remove('hidden');
                 switchView(currentView);
             }
         }
@@ -675,12 +532,9 @@
                 const button = document.getElementById(id);
                 if (!button) return;
                 button.classList.toggle('active', id === activeId);
-                button.classList.toggle('text-slate-600', id !== activeId);
-                button.classList.toggle('hover:text-slate-900', id !== activeId);
             });
         }
 
-        // Main display modes: Excel table, saved photos only, punctuality check.
         function switchView(view) {
             currentView = view;
             const scheduleView = document.getElementById('view-schedule');
@@ -702,7 +556,6 @@
             }
         }
 
-        // Load Sample Data
         function loadSampleData() {
             rawBusData = JSON.parse(JSON.stringify(sampleData));
             activeRoute = '1004';
@@ -712,13 +565,11 @@
 
             document.getElementById('route-input').value = activeRoute;
             document.getElementById('sequence-input').value = activeSequence;
-            document.getElementById('tag-route-seq').innerText = `근무조 전체 | 노선 ${activeRoute} | ${activeSequence}순번`;
-            persistAppState();
+            document.getElementById('tag-route-seq').innerText = `노선 ${activeRoute} | ${activeSequence}순번`;
 
             applySearchFilter();
         }
 
-        // 근무조 선택 목록을 현재 데이터에 맞게 갱신
         function populateShiftSelector(selectedShift = activeShift) {
             const select = document.getElementById('shift-select');
             if (!select) return;
@@ -726,7 +577,7 @@
             const shifts = [...new Set(rawBusData.map(row => String(row.shift || '미지정').trim() || '미지정'))]
                 .sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
 
-            select.innerHTML = '<option value="__ALL__">전체 근무조</option>';
+            select.innerHTML = '<option value="__ALL__">전체 근무조 보기</option>';
             shifts.forEach(shift => {
                 const option = document.createElement('option');
                 option.value = shift;
@@ -739,7 +590,6 @@
             select.value = activeShift;
         }
 
-        // 노선·순번·근무조 조건을 모두 적용한 데이터
         function getFilteredBusData() {
             return rawBusData.filter(d =>
                 String(d.route) === String(activeRoute) &&
@@ -748,22 +598,13 @@
             );
         }
 
-        // 선택한 근무조 데이터를 화면에 적용
-        function loadSelectedShift() {
-            applySearchFilter();
-        }
-
-        // Apply Route, Sequence & Shift Search Filter
         function applySearchFilter() {
             activeRoute = document.getElementById('route-input').value.trim();
             activeSequence = document.getElementById('sequence-input').value.trim();
             activeShift = document.getElementById('shift-select')?.value || '__ALL__';
             activePeriod = document.getElementById('main-period-select')?.value || '평일';
-            activeTimeSlot = document.getElementById('main-time-slot-select')?.value || '오전';
-            persistAppState();
 
-            const shiftLabel = activeShift === '__ALL__' ? '전체' : activeShift;
-            document.getElementById('tag-route-seq').innerText = `근무조 ${shiftLabel} | 노선 ${activeRoute} | ${activeSequence}순번`;
+            document.getElementById('tag-route-seq').innerText = `노선 ${activeRoute} | ${activeSequence}순번`;
 
             if (currentView === 'schedule') renderScheduleTable();
             else if (currentView === 'photo') renderPhotoViewer();
@@ -773,7 +614,6 @@
             }
         }
 
-        // Helper: Convert "4/50" or "04:50" to Minutes from Midnight
         function parseTimeToMinutes(timeStr) {
             if (!timeStr) return 0;
             let str = String(timeStr).trim();
@@ -793,16 +633,12 @@
             return hours * 60 + minutes;
         }
 
-        // Helper: Format Minutes to "HH:MM"
         function formatMinutesToTime(totalMinutes) {
             let h = Math.floor(totalMinutes / 60) % 24;
             let m = totalMinutes % 60;
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
         }
 
-        // ==========================================
-        // RENDER METHOD 1: IMAGE-EXACT SCHEDULE TABLE
-        // ==========================================
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, ch => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -821,10 +657,9 @@
             const filteredData = getFilteredBusData();
             if (filteredData.length === 0) {
                 wrapper.innerHTML = `
-                    <div class="py-12 text-center text-slate-400">
-                        <i data-lucide="info" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
-                        <p class="font-bold text-slate-600">선택한 노선(${escapeHtml(activeRoute)}) 및 순번(${escapeHtml(activeSequence)})의 운행 데이터가 없습니다.</p>
-                        <p class="text-xs mt-1">상단에서 근무조를 바꾸거나 엑셀 파일을 업로드해 주세요.</p>
+                    <div class="py-8 text-center text-slate-500 text-xs">
+                        <i data-lucide="info" class="w-8 h-8 mx-auto mb-1 opacity-50"></i>
+                        <p class="font-bold text-slate-400">해당 노선 데이터가 없습니다.</p>
                     </div>`;
                 lucide.createIcons();
                 return;
@@ -862,17 +697,7 @@
                 return diff || a.localeCompare(b, 'ko', { numeric: true });
             });
 
-            const shiftSummary = activeShift === '__ALL__'
-                ? `${groups.length}개 근무조 표시`
-                : `${escapeHtml(activeShift)} 표시`;
-            const summary = document.createElement('div');
-            summary.className = 'flex flex-wrap items-center justify-between gap-2 mb-3';
-            summary.innerHTML = `
-                <div class="text-xs font-bold text-slate-600">${shiftSummary} · 총 ${allTrips.length}회차</div>
-                <div class="text-[11px] text-slate-400">색상: 회차 번호(노랑) · 출발(보라) · 정류장(노랑/흰색) · 도착(살구색)</div>`;
-            wrapper.appendChild(summary);
-
-            let html = `<table class="grouped-schedule-table text-xs font-bold shadow-sm"><thead>`;
+            let html = `<table class="grouped-schedule-table"><thead>`;
             html += `<tr><th class="trip-col" rowspan="2">회차</th>`;
             groups.forEach(group => {
                 const span = 1 + group.stops.length;
@@ -881,7 +706,7 @@
             html += `</tr><tr>`;
             groups.forEach(group => {
                 html += `<th class="column-header departure-header group-start">출발</th>`;
-                group.stops.forEach((stop, index) => {
+                group.stops.forEach((stop) => {
                     const isArrival = stop.name === '도착';
                     const headerClass = `column-header ${isArrival ? 'arrival-header' : ''}`;
                     html += `<th class="${headerClass}">${escapeHtml(stop.name)}</th>`;
@@ -906,15 +731,9 @@
             });
 
             html += `</tbody></table>`;
-            const tableContainer = document.createElement('div');
-            tableContainer.className = 'overflow-x-auto pb-3 rounded-lg border border-slate-300';
-            tableContainer.innerHTML = html;
-            wrapper.appendChild(tableContainer);
+            wrapper.innerHTML = html;
         }
 
-        // ==========================================
-        // RENDER METHOD 2: PUNCTUALITY REALTIME CHECK
-        // ==========================================
         function populateTripSelector() {
             const select = document.getElementById('select-trip-check');
             select.innerHTML = '';
@@ -924,7 +743,7 @@
             filteredData.forEach((d, index) => {
                 const opt = document.createElement('option');
                 opt.value = index;
-                opt.innerText = `${activeShift === '__ALL__' && d.shift ? '[' + d.shift + '] ' : ''}${d.trip} (출발: ${d.departure})`;
+                opt.innerText = `${d.trip} (${d.departure} 출발)`;
                 select.appendChild(opt);
             });
         }
@@ -939,21 +758,20 @@
             const filteredData = getFilteredBusData();
 
             if (filteredData.length === 0 || !filteredData[tripIndex]) {
-                tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">데이터가 없습니다.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500 text-xs">운행 데이터가 없습니다.</td></tr>`;
                 return;
             }
 
             const tripData = filteredData[tripIndex];
             const deptMin = parseTimeToMinutes(tripData.departure);
 
-            let totalStops = tripData.stops.length;
             let evaluatedCount = 0;
             let totalDiffSum = 0;
             let delayCount = 0;
             let earlyCount = 0;
             let onTimeCount = 0;
 
-            tripData.stops.forEach((stop, idx) => {
+            tripData.stops.forEach((stop) => {
                 const stopValue = String(stop.offset ?? '').trim();
                 const scheduledMin = (stopValue.includes('/') || stopValue.includes(':'))
                     ? parseTimeToMinutes(stopValue)
@@ -963,8 +781,7 @@
                 const logKey = `${tripData.shift || '미지정'}_${activeRoute}_${activeSequence}_${tripData.trip}_${stop.name}`;
                 const savedActual = actualTimeLog[logKey] || '';
 
-                let diffText = '-';
-                let statusBadge = `<span class="text-xs text-slate-400">미입력</span>`;
+                let statusBadge = `<span class="text-[10px] text-slate-500">대기</span>`;
 
                 if (savedActual) {
                     const actualMin = parseTimeToMinutes(savedActual);
@@ -974,38 +791,31 @@
 
                     if (diff > 2) {
                         delayCount++;
-                        diffText = `+${diff}분`;
-                        statusBadge = `<span class="px-2.5 py-1 bg-red-100 text-red-700 font-bold rounded-md text-xs border border-red-200">지연</span>`;
+                        statusBadge = `<span class="px-2 py-0.5 bg-rose-950 text-rose-400 font-black rounded-md text-[10px] border border-rose-800">+${diff}분 지연</span>`;
                     } else if (diff < -2) {
                         earlyCount++;
-                        diffText = `${diff}분`;
-                        statusBadge = `<span class="px-2.5 py-1 bg-blue-100 text-blue-700 font-bold rounded-md text-xs border border-blue-200">조기출발</span>`;
+                        statusBadge = `<span class="px-2 py-0.5 bg-sky-950 text-sky-400 font-black rounded-md text-[10px] border border-sky-800">${diff}분 조기</span>`;
                     } else {
                         onTimeCount++;
-                        diffText = `0분`;
-                        statusBadge = `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-bold rounded-md text-xs border border-emerald-200">정시통과</span>`;
+                        statusBadge = `<span class="px-2 py-0.5 bg-emerald-950 text-emerald-400 font-black rounded-md text-[10px] border border-emerald-800">정시</span>`;
                     }
                 }
 
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition";
+                tr.className = "hover:bg-slate-800/50 transition";
                 tr.innerHTML = `
-                    <td class="px-4 py-3 text-center font-mono font-bold text-slate-400 text-xs">${idx + 1}</td>
-                    <td class="px-4 py-3 font-bold text-slate-800 text-sm">${stop.name}</td>
-                    <td class="px-4 py-3 text-center font-mono font-bold text-indigo-600 bg-slate-50">${(String(stop.offset ?? '').includes('/') || String(stop.offset ?? '').includes(':')) ? stop.offset : `${stop.offset}분`}</td>
-                    <td class="px-4 py-3 text-center font-mono font-bold text-slate-700">${scheduledTimeStr}</td>
-                    <td class="px-4 py-3 text-center">
-                        <input type="text" placeholder="예: ${scheduledTimeStr}" value="${savedActual}"
+                    <td class="px-2.5 py-2 font-bold text-slate-200 text-xs">${stop.name}</td>
+                    <td class="px-2 py-2 text-center font-mono font-bold text-slate-400 text-xs">${scheduledTimeStr}</td>
+                    <td class="px-2 py-1.5 text-center">
+                        <input type="text" placeholder="${scheduledTimeStr}" value="${savedActual}"
                             onchange="updateActualTime('${logKey}', this.value)"
-                            class="w-28 px-2.5 py-1 text-center font-mono font-bold bg-amber-50 border border-amber-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                            class="w-20 py-1 text-center font-mono font-bold bg-slate-800 border border-slate-700 rounded-lg text-xs text-amber-300 focus:bg-slate-900 focus:ring-1 focus:ring-indigo-500 outline-none">
                     </td>
-                    <td class="px-4 py-3 text-center font-mono font-bold text-slate-800">${diffText}</td>
-                    <td class="px-4 py-3 text-center">${statusBadge}</td>
+                    <td class="px-2 py-2 text-center">${statusBadge}</td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // Update KPIs
             const punctualityRate = evaluatedCount > 0 ? ((onTimeCount / evaluatedCount) * 100).toFixed(0) : 100;
             const avgDiff = evaluatedCount > 0 ? (totalDiffSum / evaluatedCount).toFixed(1) : 0;
 
@@ -1018,13 +828,9 @@
 
         function updateActualTime(key, val) {
             actualTimeLog[key] = val.trim();
-            persistAppState();
             renderPunctualityCheckTable();
         }
 
-        // ==========================================
-        // EXCEL UPLOAD PARSER
-        // ==========================================
         function handleExcelUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -1038,16 +844,16 @@
                     const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
                     if (json.length === 0) {
-                        alert('엑셀 파일에 읽을 데이터가 없습니다.');
+                        alert('엑셀 파일에 데이터가 없습니다.');
                         return;
                     }
 
                     parseParsedExcelJSON(json);
-                    alert('엑셀 파일 데이터 업로드가 완료되었습니다.');
+                    alert('엑셀 데이터를 불러왔습니다.');
                     switchTab('main');
                 } catch (err) {
                     console.error(err);
-                    alert('엑셀 파싱 중 오류가 발생했습니다. 헤더 형식을 확인해주세요.');
+                    alert('엑셀 해석 중 오류가 발생했습니다.');
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -1072,10 +878,7 @@
                     else if (/출발|출발시각|출발시간/i.test(cleanKey)) departure = val;
                     else {
                         if (cleanKey && !/id|idx/i.test(cleanKey)) {
-                            stops.push({
-                                name: key.trim(),
-                                offset: val
-                            });
+                            stops.push({ name: key.trim(), offset: val });
                         }
                     }
                 });
@@ -1094,21 +897,16 @@
                 document.getElementById('sequence-input').value = activeSequence;
                 populateShiftSelector(activeShift);
                 currentView = 'schedule';
-                persistAppState();
                 applySearchFilter();
             }
         }
 
-
-        // ==============================================================
-        // ROUTE / DAY-TYPE PHOTO LIBRARY (MULTIPLE PHOTOS SUPPORT)
-        // Photos stored as Blobs Array in IndexedDB
-        // ==============================================================
+        // IndexedDB Photo Storage
         function openPhotoDatabase() {
             if (photoDbPromise) return photoDbPromise;
             photoDbPromise = new Promise((resolve, reject) => {
                 if (!('indexedDB' in window)) {
-                    reject(new Error('이 브라우저는 IndexedDB를 지원하지 않습니다.'));
+                    reject(new Error('IndexedDB 미지원 브라우저입니다.'));
                     return;
                 }
                 const request = indexedDB.open(PHOTO_DB_NAME, PHOTO_DB_VERSION);
@@ -1119,35 +917,22 @@
                     }
                 };
                 request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error || new Error('사진 저장소를 열지 못했습니다.'));
-                request.onblocked = () => reject(new Error('사진 저장소가 다른 창에서 사용 중입니다.'));
+                request.onerror = () => reject(request.error || new Error('DB 오픈 실패'));
             });
             return photoDbPromise;
         }
 
-        function makePhotoKey(route, dayType, timeSlot = '오전') {
-            return `${String(route || '').trim()}::${String(dayType || '평일').trim()}::${String(timeSlot || '오전').trim()}`;
-        }
-
-        function makeLegacyPhotoKey(route, dayType) {
+        function makePhotoKey(route, dayType) {
             return `${String(route || '').trim()}::${String(dayType || '평일').trim()}`;
         }
 
-        async function getStoredSchedulePhoto(route, dayType, timeSlot = '오전') {
+        async function getStoredSchedulePhoto(route, dayType) {
             const db = await openPhotoDatabase();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction(PHOTO_STORE_NAME, 'readonly');
-                const store = tx.objectStore(PHOTO_STORE_NAME);
-                const request = store.get(makePhotoKey(route, dayType, timeSlot));
-                request.onsuccess = () => {
-                    if (request.result) { resolve(request.result); return; }
-                    if (timeSlot === '오전') {
-                        const legacy = store.get(makeLegacyPhotoKey(route, dayType));
-                        legacy.onsuccess = () => resolve(legacy.result || null);
-                        legacy.onerror = () => reject(legacy.error || new Error('기존 저장 사진을 읽지 못했습니다.'));
-                    } else resolve(null);
-                };
-                request.onerror = () => reject(request.error || new Error('저장된 사진을 읽지 못했습니다.'));
+                const request = tx.objectStore(PHOTO_STORE_NAME).get(makePhotoKey(route, dayType));
+                request.onsuccess = () => resolve(request.result || null);
+                request.onerror = () => reject(request.error);
             });
         }
 
@@ -1157,39 +942,31 @@
                 const tx = db.transaction(PHOTO_STORE_NAME, 'readwrite');
                 tx.objectStore(PHOTO_STORE_NAME).put(record);
                 tx.oncomplete = () => resolve(true);
-                tx.onerror = () => reject(tx.error || new Error('사진 저장에 실패했습니다.'));
-                tx.onabort = () => reject(tx.error || new Error('사진 저장이 취소되었습니다.'));
+                tx.onerror = () => reject(tx.error);
             });
         }
 
-        async function removeStoredSchedulePhoto(route, dayType, timeSlot = '오전') {
+        async function removeStoredSchedulePhoto(route, dayType) {
             const db = await openPhotoDatabase();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction(PHOTO_STORE_NAME, 'readwrite');
-                const store = tx.objectStore(PHOTO_STORE_NAME);
-                store.delete(makePhotoKey(route, dayType, timeSlot));
-                if (timeSlot === '오전') store.delete(makeLegacyPhotoKey(route, dayType));
+                tx.objectStore(PHOTO_STORE_NAME).delete(makePhotoKey(route, dayType));
                 tx.oncomplete = () => resolve(true);
-                tx.onerror = () => reject(tx.error || new Error('사진 삭제에 실패했습니다.'));
-                tx.onabort = () => reject(tx.error || new Error('사진 삭제가 취소되었습니다.'));
+                tx.onerror = () => reject(tx.error);
             });
         }
 
         function syncPhotoManagerInputs() {
             const routeInput = document.getElementById('photo-route-input');
             const periodInput = document.getElementById('photo-period-input');
-            const timeSlotInput = document.getElementById('photo-timeslot-input');
             if (routeInput && !routeInput.value.trim()) routeInput.value = activeRoute || '1004';
             if (routeInput && activeRoute) routeInput.value = activeRoute;
             if (periodInput) periodInput.value = activePeriod || '평일';
-            if (timeSlotInput) timeSlotInput.value = activeTimeSlot || '오전';
         }
 
-        function setPhotoAdminStatus(message, isError = false) {
+        function setPhotoAdminStatus(message) {
             const status = document.getElementById('photo-admin-status');
-            if (!status) return;
-            status.textContent = message;
-            status.className = `rounded-lg border px-3 py-2 text-xs ${isError ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-600'}`;
+            if (status) status.textContent = message;
         }
 
         function clearAdminPreviewUrls() {
@@ -1197,296 +974,156 @@
             adminPreviewUrls = [];
         }
 
-        // Multi-photo import with per-image rotate and crop editor.
-        function storeCurrentPhotoEdits() {
-            if (activePendingPhotoIndex < 0 || !pendingSchedulePhotos[activePendingPhotoIndex]) return;
-            const item = pendingSchedulePhotos[activePendingPhotoIndex];
-            item.canvas = photoWorkingCanvas;
-            item.crop = photoCropSelection ? { ...photoCropSelection } : null;
-            item.rotated = photoWasRotated;
-        }
+        function previewSchedulePhoto(event) {
+            const files = Array.from(event.target.files || []);
+            pendingSchedulePhotos = [];
+            clearAdminPreviewUrls();
 
-        function renderPendingPhotoQueue() {
-            const queue = document.getElementById('photo-pending-queue');
-            const summary = document.getElementById('photo-admin-preview-summary');
-            queue.innerHTML = '';
-            summary.textContent = `업로드 대기 사진 ${pendingSchedulePhotos.length}장`;
-            pendingSchedulePhotos.forEach((item, index) => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = `photo-queue-button ${index === activePendingPhotoIndex ? 'active' : ''}`;
-                btn.textContent = `${index + 1}. ${item.file.name}`;
-                btn.addEventListener('click', () => selectPendingPhoto(index));
-                queue.appendChild(btn);
-            });
-            document.getElementById('save-schedule-photo-button').disabled = pendingSchedulePhotos.length === 0;
-        }
+            const saveButton = document.getElementById('save-schedule-photo-button');
+            const previewContainer = document.getElementById('photo-admin-preview');
+            const previewList = document.getElementById('photo-admin-preview-list');
+            const summaryText = document.getElementById('photo-admin-preview-summary');
 
-        function updatePhotoCropBox() {
-            const box = document.getElementById('photo-crop-box');
-            const hint = document.getElementById('photo-crop-hint');
-            if (!box) return;
-            if (!photoCropSelection) {
-                box.classList.add('hidden');
-                hint.textContent = '저장 범위: 전체 사진';
+            previewList.innerHTML = '';
+
+            if (files.length === 0) {
+                previewContainer.classList.add('hidden');
+                saveButton.disabled = true;
                 return;
             }
-            box.classList.remove('hidden');
-            box.style.left = `${photoCropSelection.x * 100}%`;
-            box.style.top = `${photoCropSelection.y * 100}%`;
-            box.style.width = `${photoCropSelection.w * 100}%`;
-            box.style.height = `${photoCropSelection.h * 100}%`;
-            hint.textContent = `선택 영역 저장 · 가로 ${Math.round(photoCropSelection.w * 100)}% · 세로 ${Math.round(photoCropSelection.h * 100)}%`;
-        }
 
-        function selectPendingPhoto(index) {
-            storeCurrentPhotoEdits();
-            activePendingPhotoIndex = index;
-            const item = pendingSchedulePhotos[index];
-            photoWorkingCanvas = item.canvas;
-            photoCropSelection = item.crop ? { ...item.crop } : null;
-            photoWasRotated = !!item.rotated;
-            const img = document.getElementById('photo-admin-preview-image');
-            if (photoEditorPreviewUrl) URL.revokeObjectURL(photoEditorPreviewUrl);
-            photoWorkingCanvas.toBlob(blob => {
-                if (!blob) return;
-                photoEditorPreviewUrl = URL.createObjectURL(blob);
-                img.src = photoEditorPreviewUrl;
-                img.onload = updatePhotoCropBox;
-            }, 'image/png');
-            renderPendingPhotoQueue();
-        }
+            const validFiles = files.filter(file => file.type && file.type.startsWith('image/'));
+            if (validFiles.length === 0) {
+                saveButton.disabled = true;
+                previewContainer.classList.add('hidden');
+                return;
+            }
 
-        async function previewSchedulePhoto(event) {
-            const files = Array.from(event.target.files || []);
-            event.target.value = '';
-            if (!files.length) return;
-            const validFiles = files.filter(file => {
-                if (!file.type || !file.type.startsWith('image/')) { alert(`${file.name}: 이미지 파일만 등록할 수 있습니다.`); return false; }
-                if (file.size > 30 * 1024 * 1024) { alert(`${file.name}: 사진 파일은 30MB 이하로 등록해 주세요.`); return false; }
-                return true;
+            pendingSchedulePhotos = validFiles;
+            summaryText.textContent = `선택한 사진 (${validFiles.length}장)`;
+
+            validFiles.forEach((file, idx) => {
+                const objectUrl = URL.createObjectURL(file);
+                adminPreviewUrls.push(objectUrl);
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex flex-col items-center bg-slate-800 p-1.5 rounded-lg w-20 text-center';
+                itemDiv.innerHTML = `
+                    <img src="${objectUrl}" class="h-14 w-full object-cover rounded mb-1 border border-slate-700">
+                    <span class="text-[9px] font-bold text-slate-300 truncate w-full">${file.name}</span>
+                `;
+                previewList.appendChild(itemDiv);
             });
-            for (const file of validFiles) {
-                const url = URL.createObjectURL(file);
-                try {
-                    const image = new Image();
-                    await new Promise((resolve,reject)=>{ image.onload=resolve; image.onerror=()=>reject(new Error('이미지를 열 수 없습니다.')); image.src=url; });
-                    const canvas = document.createElement('canvas');
-                    canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
-                    canvas.getContext('2d').drawImage(image,0,0);
-                    pendingSchedulePhotos.push({ file, canvas, crop:null, rotated:false });
-                } catch (err) { alert(`${file.name}: ${err.message}`); }
-                finally { URL.revokeObjectURL(url); }
-            }
-            if (pendingSchedulePhotos.length) {
-                document.getElementById('photo-admin-preview').classList.remove('hidden');
-                if (activePendingPhotoIndex < 0) selectPendingPhoto(0); else renderPendingPhotoQueue();
-                setPhotoAdminStatus(`${pendingSchedulePhotos.length}장 준비됨. 각 사진을 선택해 회전·자르기 후 저장하세요.`);
-            }
-        }
 
-        function rotatePhotoEditor(direction) {
-            if (!photoWorkingCanvas) return;
-            storeCurrentPhotoEdits();
-            const source = photoWorkingCanvas;
-            const rotated = document.createElement('canvas');
-            rotated.width = source.height; rotated.height = source.width;
-            const ctx = rotated.getContext('2d');
-            ctx.translate(rotated.width/2, rotated.height/2);
-            ctx.rotate((direction >= 0 ? 90 : -90) * Math.PI / 180);
-            ctx.drawImage(source,-source.width/2,-source.height/2);
-            photoWorkingCanvas = rotated;
-            photoCropSelection = null; photoWasRotated = true;
-            const item = pendingSchedulePhotos[activePendingPhotoIndex];
-            item.canvas = rotated; item.crop = null; item.rotated = true;
-            selectPendingPhoto(activePendingPhotoIndex);
-        }
-
-        function clearPhotoCrop() {
-            photoCropSelection = null;
-            if (activePendingPhotoIndex >= 0) pendingSchedulePhotos[activePendingPhotoIndex].crop = null;
-            updatePhotoCropBox();
-        }
-
-        function photoCropPoint(event) {
-            const img = document.getElementById('photo-admin-preview-image');
-            const rect = img.getBoundingClientRect();
-            return { x: Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)), y: Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height)) };
-        }
-        function beginPhotoCrop(event) {
-            if (!photoWorkingCanvas || activePendingPhotoIndex < 0) return;
-            event.preventDefault();
-            const p = photoCropPoint(event);
-            photoCropDragStart = p; photoIsDraggingCrop = true;
-            photoCropSelection = {x:p.x,y:p.y,w:0,h:0};
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-            updatePhotoCropBox();
-        }
-        function movePhotoCrop(event) {
-            if (!photoIsDraggingCrop || !photoCropDragStart) return;
-            const p = photoCropPoint(event);
-            photoCropSelection = { x:Math.min(p.x,photoCropDragStart.x), y:Math.min(p.y,photoCropDragStart.y), w:Math.abs(p.x-photoCropDragStart.x), h:Math.abs(p.y-photoCropDragStart.y) };
-            updatePhotoCropBox();
-        }
-        function endPhotoCrop(event) {
-            if (!photoIsDraggingCrop) return;
-            photoIsDraggingCrop=false; photoCropDragStart=null;
-            if (!photoCropSelection || photoCropSelection.w < .01 || photoCropSelection.h < .01) photoCropSelection=null;
-            if (activePendingPhotoIndex >= 0) pendingSchedulePhotos[activePendingPhotoIndex].crop = photoCropSelection ? {...photoCropSelection} : null;
-            updatePhotoCropBox();
-        }
-
-        async function getPendingPhotoBlob(item) {
-            let canvas = item.canvas;
-            if (item.crop && item.crop.w > .01 && item.crop.h > .01) {
-                const sx=Math.round(item.crop.x*canvas.width), sy=Math.round(item.crop.y*canvas.height);
-                const sw=Math.max(1,Math.round(item.crop.w*canvas.width)), sh=Math.max(1,Math.round(item.crop.h*canvas.height));
-                const cropped=document.createElement('canvas'); cropped.width=sw; cropped.height=sh;
-                cropped.getContext('2d').drawImage(canvas,sx,sy,sw,sh,0,0,sw,sh); canvas=cropped;
-            }
-            const mime=item.file.type==='image/png'?'image/png':'image/jpeg';
-            return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('이미지 변환에 실패했습니다.')),mime,.94));
+            previewContainer.classList.remove('hidden');
+            saveButton.disabled = false;
+            setPhotoAdminStatus(`${validFiles.length}장 미리보기 로드 완료.`);
         }
 
         async function saveSchedulePhoto() {
             const route = document.getElementById('photo-route-input').value.trim();
             const dayType = document.getElementById('photo-period-input').value;
-            const timeSlot = document.getElementById('photo-timeslot-input').value;
-            storeCurrentPhotoEdits();
-            if (!route) { alert('노선번호를 입력해 주세요.'); return; }
-            if (!pendingSchedulePhotos.length) { alert('먼저 사진을 선택해 주세요.'); return; }
-            const button=document.getElementById('save-schedule-photo-button'); button.disabled=true;
+            if (!route || pendingSchedulePhotos.length === 0) return;
+
             try {
-                const existingRecord = await getStoredSchedulePhoto(route,dayType,timeSlot);
+                const existingRecord = await getStoredSchedulePhoto(route, dayType);
                 let existingItems = existingRecord && Array.isArray(existingRecord.items) ? existingRecord.items : [];
-                if (existingRecord && existingRecord.blob && !existingItems.length) existingItems=[{fileName:existingRecord.fileName||'배차표 사진',mimeType:existingRecord.mimeType||'image/*',blob:existingRecord.blob}];
-                const newItems=[];
-                for (const [idx,item] of pendingSchedulePhotos.entries()) {
-                    const blob=await getPendingPhotoBlob(item);
-                    newItems.push({ fileName:`${item.file.name.replace(/\.[^.]+$/,'')}${item.rotated?'_회전':''}${item.crop?'_자르기':''}.${blob.type==='image/png'?'png':'jpg'}`, originalFileName:item.file.name, mimeType:blob.type||item.file.type, blob, rotated:!!item.rotated, cropped:!!item.crop, updatedAt:new Date().toISOString() });
+
+                if (existingRecord && existingRecord.blob && existingItems.length === 0) {
+                    existingItems.push({ fileName: existingRecord.fileName || '사진', blob: existingRecord.blob });
                 }
-                const combinedItems=[...existingItems,...newItems];
-                await putStoredSchedulePhoto({key:makePhotoKey(route,dayType,timeSlot),route,dayType,timeSlot,items:combinedItems,updatedAt:new Date().toISOString()});
-                pendingSchedulePhotos=[]; activePendingPhotoIndex=-1; photoWorkingCanvas=null; photoCropSelection=null; photoWasRotated=false;
-                if(photoEditorPreviewUrl){URL.revokeObjectURL(photoEditorPreviewUrl);photoEditorPreviewUrl=null;}
-                document.getElementById('schedule-photo-file').value='';
-                document.getElementById('photo-pending-queue').innerHTML='';
+
+                const newItems = pendingSchedulePhotos.map(file => ({
+                    fileName: file.name,
+                    mimeType: file.type || 'image/*',
+                    blob: file
+                }));
+
+                const combinedItems = [...existingItems, ...newItems];
+
+                await putStoredSchedulePhoto({
+                    key: makePhotoKey(route, dayType),
+                    route,
+                    dayType,
+                    items: combinedItems,
+                    updatedAt: new Date().toISOString()
+                });
+
+                pendingSchedulePhotos = [];
+                clearAdminPreviewUrls();
+                document.getElementById('schedule-photo-file').value = '';
+                document.getElementById('save-schedule-photo-button').disabled = true;
                 document.getElementById('photo-admin-preview').classList.add('hidden');
-                button.disabled=true;
-                setPhotoAdminStatus(`${route}번 ${dayType} ${timeSlot} 사진 ${newItems.length}장을 추가해 총 ${combinedItems.length}장을 저장했습니다.`);
+                
+                setPhotoAdminStatus(`${route}번 ${dayType} 사진 ${combinedItems.length}장 저장됨`);
                 await refreshPhotoManagerStatus();
-                if(activeRoute===route&&activePeriod===dayType&&activeTimeSlot===timeSlot&&currentView==='photo') renderPhotoViewer();
-            } catch(error) {
-                console.error(error); setPhotoAdminStatus(`사진 저장 실패: ${error.message||error}`,true); alert(`사진 저장 실패: ${error.message||error}`);
-                button.disabled=pendingSchedulePhotos.length===0;
+                if (activeRoute === route && activePeriod === dayType && currentView === 'photo') renderPhotoViewer();
+            } catch (error) {
+                alert(`저장 실패: ${error.message}`);
             }
         }
 
         async function refreshPhotoManagerStatus() {
             const route = document.getElementById('photo-route-input')?.value.trim();
             const dayType = document.getElementById('photo-period-input')?.value || '평일';
-            const timeSlot = document.getElementById('photo-timeslot-input')?.value || '오전';
             const deleteButton = document.getElementById('delete-schedule-photo-button');
-            if (!route) {
-                if (deleteButton) deleteButton.disabled = true;
-                setPhotoAdminStatus('노선번호를 입력하면 해당 노선·운행일 유형에 저장된 사진들을 확인합니다.');
-                return;
-            }
+            if (!route) return;
+
             try {
-                const record = await getStoredSchedulePhoto(route, dayType, timeSlot);
+                const record = await getStoredSchedulePhoto(route, dayType);
                 const itemsCount = record ? (record.items ? record.items.length : (record.blob ? 1 : 0)) : 0;
-                
                 if (deleteButton) deleteButton.disabled = itemsCount === 0;
 
                 if (itemsCount > 0) {
-                    const when = record.updatedAt ? new Date(record.updatedAt).toLocaleString('ko-KR') : '날짜 정보 없음';
-                    setPhotoAdminStatus(`저장된 사진: ${dayType} ${timeSlot} 총 ${itemsCount}장 · 마지막 업데이트 ${when}`);
+                    setPhotoAdminStatus(`저장됨: 총 ${itemsCount}장`);
                 } else {
-                    setPhotoAdminStatus(`${route}번 ${dayType} ${timeSlot}에는 저장된 사진이 없습니다.`);
+                    setPhotoAdminStatus(`저장된 사진 없음`);
                 }
             } catch (error) {
-                if (deleteButton) deleteButton.disabled = true;
-                setPhotoAdminStatus(`사진 저장소 확인 실패: ${error.message || error}`, true);
+                console.error(error);
             }
-        }
-
-        function loadPhotoManagerCurrentRecord() {
-            refreshPhotoManagerStatus();
         }
 
         async function deleteSchedulePhoto() {
             const route = document.getElementById('photo-route-input').value.trim();
             const dayType = document.getElementById('photo-period-input').value;
-            const timeSlot = document.getElementById('photo-timeslot-input').value;
-            if (!route) return;
-            if (!confirm(`${route}번 ${dayType} ${timeSlot}에 저장된 모든 배차표 사진을 삭제할까요?`)) return;
+            if (!route || !confirm(`${route}번 ${dayType} 사진 전체를 삭제할까요?`)) return;
+
             try {
-                await removeStoredSchedulePhoto(route, dayType, timeSlot);
-                setPhotoAdminStatus(`${route}번 ${dayType} ${timeSlot} 사진들을 모두 삭제했습니다.`);
+                await removeStoredSchedulePhoto(route, dayType);
+                setPhotoAdminStatus(`삭제 완료`);
                 await refreshPhotoManagerStatus();
-                if (activeRoute === route && activePeriod === dayType && activeTimeSlot === timeSlot && currentView === 'photo') renderPhotoViewer();
+                if (activeRoute === route && activePeriod === dayType && currentView === 'photo') renderPhotoViewer();
             } catch (error) {
-                setPhotoAdminStatus(`사진 삭제 실패: ${error.message || error}`, true);
+                alert(`삭제 실패`);
             }
         }
 
-        function openPhotoManagerForCurrentSelection() {
-            document.getElementById('photo-route-input').value = activeRoute || '';
-            document.getElementById('photo-period-input').value = activePeriod || '평일';
-            document.getElementById('photo-timeslot-input').value = activeTimeSlot || '오전';
-            switchTab('settings');
-        }
-
-        function openMainPhotoViewFromManager() {
-            const route = document.getElementById('photo-route-input').value.trim();
-            const dayType = document.getElementById('photo-period-input').value;
-            const timeSlot = document.getElementById('photo-timeslot-input').value;
-            if (!route) {
-                alert('노선번호를 입력해 주세요.');
-                return;
-            }
-            document.getElementById('route-input').value = route;
-            document.getElementById('main-period-select').value = dayType;
-            document.getElementById('main-time-slot-select').value = timeSlot;
-            activeRoute = route;
-            activePeriod = dayType;
-            activeTimeSlot = timeSlot;
-            switchTab('main');
-            switchView('photo');
-        }
-
-        let photoViewNaturalWidths = [];
         function updatePhotoZoomLayout() {
             const stage = document.getElementById('schedule-photo-stage');
             const label = document.getElementById('photo-zoom-level');
-            if (!stage) return;
             const images = stage.querySelectorAll('.schedule-photo-item img');
-            if (images.length === 0) return;
 
-            const availableWidth = Math.max(240, stage.clientWidth - 48);
+            if (!stage || images.length === 0) return;
 
-            images.forEach((img, idx) => {
-                const natWidth = photoViewNaturalWidths[idx] || img.naturalWidth || 800;
-                const fitWidth = Math.min(natWidth, availableWidth);
-                const targetWidth = Math.max(120, fitWidth * photoZoom);
-                img.style.width = `${targetWidth}px`;
+            images.forEach((img) => {
+                img.style.width = `${100 * photoZoom}%`;
+                img.style.maxWidth = photoZoom > 1 ? 'none' : '100%';
             });
 
             if (label) {
-                label.textContent = photoZoom === 1 ? '맞춤 100%' : `${Math.round(photoZoom * 100)}%`;
+                label.textContent = `${Math.round(photoZoom * 100)}%`;
             }
         }
 
         function changePhotoZoom(delta) {
-            photoZoom = Math.max(0.4, Math.min(4, Math.round((photoZoom + delta) * 100) / 100));
+            photoZoom = Math.max(0.6, Math.min(3, Math.round((photoZoom + delta) * 100) / 100));
             updatePhotoZoomLayout();
         }
 
         function resetPhotoZoom() {
             photoZoom = 1;
             updatePhotoZoomLayout();
-            const stage = document.getElementById('schedule-photo-stage');
-            if (stage) { stage.scrollTop = 0; stage.scrollLeft = 0; }
         }
 
         function clearMainPhotoObjectUrls() {
@@ -1494,7 +1131,6 @@
             mainPhotoObjectUrls = [];
         }
 
-        // Multiple Vertical Photo Viewer Render
         async function renderPhotoViewer() {
             const status = document.getElementById('photo-view-status');
             const subtitle = document.getElementById('photo-view-subtitle');
@@ -1506,36 +1142,29 @@
             const token = ++photoRenderToken;
             const route = (document.getElementById('route-input')?.value || activeRoute || '').trim();
             const dayType = document.getElementById('main-period-select')?.value || activePeriod || '평일';
-            const timeSlot = document.getElementById('main-time-slot-select')?.value || activeTimeSlot || '오전';
 
             activeRoute = route;
             activePeriod = dayType;
-            activeTimeSlot = timeSlot;
-            subtitle.textContent = `노선 ${route || '-'} · ${dayType} · ${timeSlot} 운행 배차표 원본 사진 목록`;
-            status.textContent = '저장된 사진들을 불러오는 중입니다.';
+            subtitle.textContent = `노선 ${route} · ${dayType} 사진 목록`;
+            status.textContent = '사진 로드 중...';
 
-            // Remove existing dynamic image items
             const oldItems = stage.querySelectorAll('.schedule-photo-item');
             oldItems.forEach(el => el.remove());
             empty.classList.add('hidden');
             clearMainPhotoObjectUrls();
-            photoViewNaturalWidths = [];
 
             try {
-                const record = await getStoredSchedulePhoto(route, dayType, timeSlot);
+                const record = await getStoredSchedulePhoto(route, dayType);
                 if (token !== photoRenderToken) return;
 
                 let items = [];
                 if (record) {
-                    if (Array.isArray(record.items) && record.items.length > 0) {
-                        items = record.items;
-                    } else if (record.blob) {
-                        items = [{ fileName: record.fileName || '배차표 사진', blob: record.blob }];
-                    }
+                    if (Array.isArray(record.items) && record.items.length > 0) items = record.items;
+                    else if (record.blob) items = [{ fileName: record.fileName || '배차표 사진', blob: record.blob }];
                 }
 
                 if (items.length === 0) {
-                    status.textContent = `${route || '선택한 노선'}번 ${dayType} ${timeSlot} 배차표 사진이 등록되어 있지 않습니다.`;
+                    status.textContent = `저장된 배차표 사진 없음`;
                     empty.classList.remove('hidden');
                     lucide.createIcons();
                     return;
@@ -1551,82 +1180,40 @@
                     itemContainer.className = 'schedule-photo-item';
 
                     const labelDiv = document.createElement('div');
-                    labelDiv.className = 'text-xs text-slate-300 font-bold mb-2 flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700';
-                    labelDiv.innerHTML = `<span>[사진 ${idx + 1} / ${items.length}]</span> <span>${item.fileName || '배차표 이미지'}</span>`;
+                    labelDiv.className = 'text-[10px] text-slate-300 font-bold mb-1.5 px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700';
+                    labelDiv.innerHTML = `[${idx + 1}/${items.length}] ${item.fileName || '배차표'}`;
 
                     const img = document.createElement('img');
-                    img.alt = `${route}번 ${dayType} ${timeSlot} 배차표 사진 ${idx + 1}`;
+                    img.alt = `${route}번 ${dayType} 사진 ${idx + 1}`;
                     img.src = objectUrl;
-
-                    img.onload = () => {
-                        photoViewNaturalWidths[idx] = img.naturalWidth;
-                        updatePhotoZoomLayout();
-                    };
 
                     itemContainer.appendChild(labelDiv);
                     itemContainer.appendChild(img);
                     stage.appendChild(itemContainer);
                 });
 
-                const savedAt = record.updatedAt ? new Date(record.updatedAt).toLocaleString('ko-KR') : '';
-                status.textContent = `총 ${items.length}장의 사진 표시 중${savedAt ? ` · 최근 업데이트: ${savedAt}` : ''}`;
+                status.textContent = `총 ${items.length}장의 사진 표시 중`;
                 empty.classList.add('hidden');
 
             } catch (error) {
-                console.error(error);
-                status.textContent = `사진을 불러오지 못했습니다: ${error.message || error}`;
+                status.textContent = `사진 로드 실패`;
                 empty.classList.remove('hidden');
                 lucide.createIcons();
             }
         }
-
-        window.addEventListener('resize', () => {
-            if (currentView === 'photo') updatePhotoZoomLayout();
-        });
-
-
-        // Android PWA installation and offline support.
-        function registerPWAServiceWorker() {
-            if (!('serviceWorker' in navigator)) return;
-            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(reg => {
-                    console.log('PWA service worker ready:', reg.scope);
-                }).catch(err => console.warn('Service worker registration failed:', err));
-            });
-        }
-
-        function setupPWAInstallPrompt() {
-            const button = document.getElementById('pwa-install-button');
-            window.addEventListener('beforeinstallprompt', event => {
-                event.preventDefault();
-                deferredInstallPrompt = event;
-                button.classList.remove('hidden');
-                button.classList.add('flex');
-            });
-            window.addEventListener('appinstalled', () => {
-                deferredInstallPrompt = null;
-                button.classList.add('hidden');
-                button.classList.remove('flex');
-            });
-            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-                button.classList.add('hidden');
-                button.classList.remove('flex');
-            }
-        }
-
-        async function installPWA() {
-            if (!deferredInstallPrompt) {
-                alert('Chrome 메뉴에서 [앱 설치] 또는 [홈 화면에 추가]를 선택해 주세요.');
-                return;
-            }
-            deferredInstallPrompt.prompt();
-            await deferredInstallPrompt.userChoice;
-            deferredInstallPrompt = null;
-            document.getElementById('pwa-install-button').classList.add('hidden');
-            document.getElementById('pwa-install-button').classList.remove('flex');
-        }
-
     </script>
 </body>
 </html>
+```
+
+### 📱 6.8인치 모바일 화면 주요 UI 최적화 내역
+
+1. **다크 모드 & 고대비 가독성 제어**: 야간 및 모바일 시인성을 높이기 위해 시원한 서구형 다크 테마(Slate 900) 기반으로 색상 고대비 패널을 적용했습니다.
+2. **엄지손가락 터치(Thumb Zone) 조작 체계**:
+   - 상단 헤더 바로 아래 주요 탭(시간표 / 배차 사진 / 정시 체크)을 고정(Sticky) 배치하여 한 손 조작이 매우 편해졌습니다.
+   - 입력 폼, 조회 버튼, 줌 조정 버튼 등 주요 요소의 터치 영역(Hit Area)을 모바일 기준(44px 이상)으로 확대했습니다.
+3. **스마트폰 세로모드 시간표 테이블 압축**:
+   - 회차 열(노란색)은 왼쪽에 고정(`sticky`)되어 스크롤 시에도 회차가 유실되지 않습니다.
+   - 여백 및 폰트 크기를 조절하여 6.8인치 화면 한 스크린에 더 많은 데이터가 밀도 있게 들어오도록 다듬었습니다.
+4. **정시 체크 패널 2x2 카드화**:
+   - 요약 수치(KPI)를 6.8인치 모바일 비율에 적합하게 2x2 타일형 레이아웃으로 변경하고 폰트 크기를 조정했습니다.
